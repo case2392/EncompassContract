@@ -47,18 +47,19 @@ Rules:
 Return JSON with exactly those keys."""
 
 
-def pdf_to_images_b64(pdf_path: Path) -> list[str]:
-    """Render each PDF page to PNG bytes (base64) for Claude vision."""
-    try:
-        from pdf2image import convert_from_path
-    except ImportError:
-        sys.exit("Missing dependency. Run: py -m pip install pdf2image\n"
-                 "On Windows you also need poppler: https://github.com/oschwartz10612/poppler-windows/releases")
+def pdf_to_images_b64(pdf_path: Path, scale: float = 2.0) -> list[str]:
+    """Render each PDF page to PNG bytes (base64) for Claude vision.
 
-    images = convert_from_path(str(pdf_path), dpi=200)
-    out = []
+    Uses pypdfium2 (no external binaries needed). scale=2.0 ~= 144 DPI.
+    """
     import io
-    for img in images:
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(str(pdf_path))
+    out = []
+    for page in pdf:
+        bitmap = page.render(scale=scale)
+        img = bitmap.to_pil()
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         out.append(base64.standard_b64encode(buf.getvalue()).decode("ascii"))

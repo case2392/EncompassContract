@@ -8,14 +8,10 @@ and types them into Encompass via `Ctrl+G` (Go to Field).
 1. Python is already installed (you're on Python 3.14).
 2. Install dependencies:
    ```
-   py -m pip install pypdf pdfplumber pdf2image anthropic pyautogui pillow
+   py -m pip install pypdf pdfplumber anthropic pyautogui pillow
    ```
-3. Install **poppler** (needed to convert PDF pages to images):
-   - Download: https://github.com/oschwartz10612/poppler-windows/releases
-   - Unzip to `C:\poppler` (or anywhere)
-   - Add `C:\poppler\Library\bin` to your PATH, OR pass `poppler_path=` in `extract.py`
-4. Get an Anthropic API key from https://console.anthropic.com/settings/keys
-5. Set it as an environment variable (PowerShell):
+3. Get an Anthropic API key from https://console.anthropic.com/settings/keys
+4. Set it as an environment variable (PowerShell):
    ```
    setx ANTHROPIC_API_KEY "sk-ant-..."
    ```
