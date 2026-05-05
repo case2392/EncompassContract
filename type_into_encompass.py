@@ -28,9 +28,13 @@ pyautogui.PAUSE = 0.05      # tiny gap between actions
 
 # Logical field name -> JSON key in values.json
 # (most are 1:1; derived fields come from data["_derived"])
+DERIVED_FIELDS = {"earnest_plus_dd_fee", "due_diligence_date"}
+
 def value_for(data: dict, logical_name: str):
-    if logical_name == "earnest_plus_dd_fee":
-        return (data.get("_derived") or {}).get("earnest_plus_dd_fee")
+    if logical_name in DERIVED_FIELDS:
+        derived = data.get("_derived") or {}
+        # Fall back to top-level if extractor found a literal value
+        return derived.get(logical_name) or data.get(logical_name)
     return data.get(logical_name)
 
 

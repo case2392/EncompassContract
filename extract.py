@@ -27,8 +27,10 @@ Fields to extract:
 - seller_2_name: Second seller, if any. Often separated by " & " or "and". String or null.
 - seller_3_name: Third seller, if any. String or null.
 - seller_4_name: Fourth seller, if any. String or null.
+- contract_acceptance_date: The date in paragraph 1 PARTIES ("This Contract of Sale is entered into on ___"). Format MM/DD/YYYY. String or null.
 - closing_date: The closing date in paragraph 7. Format MM/DD/YYYY. String or null.
-- due_diligence_date: The Due Diligence Period end date (paragraph 13 area). Format MM/DD/YYYY. String or null.
+- dd_business_days: Number of business days in the Due Diligence Period as printed in paragraph 13 (look for text like "ten (10) Business Day Due Diligence Period"). Integer or null.
+- due_diligence_date: Literal Due Diligence end date IF printed on the contract (rare). Format MM/DD/YYYY. String or null.
 - listing_agent_name: Seller's / Listing Agent full name (typically near the signature/agent block at end). String or null.
 - listing_agent_company: Listing Agent's brokerage / company name. String or null.
 - listing_agent_email: Listing Agent email. String or null.
@@ -101,11 +103,48 @@ def extract(pdf_path: Path) -> dict:
 
 
 def derive_fields(data: dict) -> dict:
-    """Apply business rules: earnest money + due diligence fee → URLAROA0103."""
+    """Apply business rules:
+    - earnest_money + due_diligence_fee -> URLAROA0103 (sum)
+    - due_diligence_date = contract_acceptance_date + dd_business_days (skipping weekends)
+    """
     em = data.get("earnest_money") or 0
-    dd = data.get("due_diligence_fee") or 0
-    total = em + dd
-    return {"earnest_plus_dd_fee": total if total > 0 else None}
+    dd_fee = data.get("due_diligence_fee") or 0
+    total = em + dd_fee
+
+    # Compute DD date if literal not present
+    dd_date = data.get("due_diligence_date")
+    if not dd_date:
+        dd_date = compute_due_diligence_date(
+            data.get("contract_acceptance_date"),
+            data.get("dd_business_days"),
+        )
+
+    return {
+        "earnest_plus_dd_fee": total if total > 0 else None,
+        "due_diligence_date": dd_date,
+    }
+
+
+def compute_due_diligence_date(start_mmddyyyy: str | None, days: int | None) -> str | None:
+    """Return start_date + N business days (skipping Sat/Sun) as MM/DD/YYYY.
+
+    Per SC CCRA-01: "first Business Day ... will begin at 8AM of the Business Day
+    following final Contract Acceptance" — so day 1 is the next business day after
+    the start date, and we count N business days from there.
+    """
+    from datetime import datetime, timedelta
+    if not start_mmddyyyy or not days:
+        return None
+    try:
+        d = datetime.strptime(start_mmddyyyy, "%m/%d/%Y").date()
+    except ValueError:
+        return None
+    counted = 0
+    while counted < days:
+        d = d + timedelta(days=1)
+        if d.weekday() < 5:   # Mon-Fri
+            counted += 1
+    return d.strftime("%m/%d/%Y")
 
 
 def main():
